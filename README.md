@@ -1,5 +1,8 @@
 # Download stream from ustream.tv
 
+[![CircleCI](https://img.shields.io/circleci/project/bertrandmartel/ustream-dl.svg?maxAge=2592000?style=plastic)](https://circleci.com/gh/bertrandmartel/ustream-dl) 
+[![License](http://img.shields.io/:license-mit-blue.svg)](LICENSE.md)
+
 Experimental python script for downloading a stream (which has ended) from ustream.tv
 
 The goal is to automate the process to get the video file for the whole stream in FLV format
