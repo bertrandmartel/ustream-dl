@@ -17,14 +17,13 @@ def randN(n):
 		random.shuffle(l)
 	return int(''.join(str(d) for d in l[:n]))
 
-def get_channel_id(url):
+def get_channel_id(sess, url):
 	"""get channel id from the URL root page """
-	with urllib.request.urlopen(url) as url:
-		response = url.read()
-		soup = BeautifulSoup(response, 'html.parser')
-		return soup.find("meta",  attrs={'name':"ustream:channel_id"})["content"]
+	content = sess.get(url).content
+	soup = BeautifulSoup(content, 'html.parser')
+	return soup.find("meta",  attrs={'name':"ustream:channel_id"})["content"]
 
-def authenticate(name, email, company, role, phone):
+def authenticate(sess, name, email, company, role, phone):
 	"""authenticate to get the hash JSON object """
 	payload = {
 		'fields[name]' : name,
@@ -33,16 +32,16 @@ def authenticate(name, email, company, role, phone):
 		'fields[role]' : role,
 		'fields[phone]' : phone
 	}
-	r = requests.post('https://www.ustream.tv/ajax/viewer-registration/save/' + channel_id + '/channel/' + channel_id + '.json',
+	r = sess.post('https://www.ustream.tv/ajax/viewer-registration/save/' + channel_id + '/channel/' + channel_id + '.json',
 		data = payload)
 	return json.loads(r.text)
 
-def get_channel_content(auth):
+def get_channel_content(sess, auth):
 	"""get channel content to get video id list"""
 	payload = {
 		'hash' : json.dumps(auth["hash"])
 	}
-	r = requests.post('https://www.ustream.tv/ajax/viewing-experience/channel/' + channel_id + '/content.json',
+	r = sess.post('https://www.ustream.tv/ajax/viewing-experience/channel/' + channel_id + '/content.json',
 		data = payload)
 	return json.loads(r.text)
 
@@ -62,9 +61,12 @@ def download(url, session, semaphore, chunk_size=1<<15):
 		logging.info('done %s', url["location"])
 	return url["location"], (response.status, tuple(response.headers.items()))
 
-def get_stream_urls(dirpath, url):
+def get_stream_urls(websocket_url, cookies, dirpath, url):
 	"""connect to websocket to generate stream URL list"""
-	ws = create_connection("wss://r" + str(randN(8)) + "-1-" + video_id + "-recorded-wss-live.ums.ustream.tv/1/ustream")
+	ws = create_connection(websocket_url, header={
+			"Cookies": cookies
+		}
+	)
 
 	data = {
 		"cmd":"connect",
@@ -86,10 +88,15 @@ def get_stream_urls(dirpath, url):
 	urls = []
 	count = 0
 	format_selected = "flv/segmented"
-	
+	target_host = ""
+
 	while ("stream" not in result["args"][0]) or (format_selected not in result["args"][0]["stream"]["streamFormats"]):
 		result =  json.loads(ws.recv())
 		print(result)
+		if ( ("cmd" in result) and (result["cmd"] == "reject") and ("cluster" in result["args"][0])):
+			print("rejected...try the next host")
+			target_host = result["args"][0]["cluster"]["host"]
+			break;
 		if ("stream" in result["args"][0]) and (format_selected in result["args"][0]["stream"]["streamFormats"]):
 			hashes = result["args"][0]["stream"]["streamFormats"][format_selected]["hashes"]
 			url = "https://vod-cdn.ustream.tv/" + result["args"][0]["stream"]["streamFormats"][format_selected]["contentAccess"]["accessList"][0]["data"]["path"]
@@ -137,7 +144,7 @@ def get_stream_urls(dirpath, url):
 								count+=1
 
 	ws.close()
-	return count, urls
+	return count, urls, target_host
 
 def parallel_download(urls):
 	"""parallel download of all FLV files"""
@@ -150,18 +157,27 @@ def parallel_download(urls):
 
 dirpath = tempfile.mkdtemp()
 
+sess = requests.session()
 url = "https://www.ustream.tv/channel/curJSsZFUUu"
-channel_id = get_channel_id(url)
+channel_id = get_channel_id(sess, url)
 
-auth = authenticate('test', 'test@test.com', 'test', 'test', '0123456789')
-content = get_channel_content(auth)
+auth = authenticate(sess, 'test', 'test@test.com', 'test', 'test', '0123456789')
+content = get_channel_content(sess, auth)
 video_id = content["exposedVariables"]["videosData"]["videos"][0]["id"]
 
 print(auth);
 print("channel_id : " + channel_id)
 print("video_id : " + video_id)
 
-count, urls = get_stream_urls(dirpath, url)
+cookies = sess.cookies.get_dict()
+cookie_string = "; ".join([str(x)+"="+str(y) for x,y in cookies.items()])
+
+websocket_url = "wss://r" + str(randN(8)) + "-1-" + video_id + "-recorded-wss-live.ums.ustream.tv/1/ustream"
+count, urls, next_host = get_stream_urls(websocket_url, cookie_string, dirpath, url)
+
+if (next_host is not None):
+	print("connecting to " + next_host)
+	count, urls = get_stream_urls(next_host, cookie_string, dirpath, url)
 
 parallel_download(urls)
 
