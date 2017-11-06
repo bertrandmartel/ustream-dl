@@ -1,0 +1,4 @@
+aiohttp==2.3.2
+requests==2.12.4
+beautifulsoup4==4.6.0
+websocket_client==0.44.0
