@@ -177,7 +177,7 @@ count, urls, next_host = get_stream_urls(websocket_url, cookie_string, dirpath, 
 
 if (next_host is not None):
 	print("connecting to " + next_host)
-	count, urls = get_stream_urls(next_host, cookie_string, dirpath, url)
+	count, urls, next_host = get_stream_urls("wss://" + next_host + "/1/ustream", cookie_string, dirpath, url)
 
 parallel_download(urls)
 
