@@ -72,6 +72,7 @@ ffmpeg -i stream.flv -codec copy stream.mp4
 ## References
 
 * [Video File Format Specification Version 10 - Adobe](https://www.google.fr/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&ved=0ahUKEwjfts6Xk6nXAhVILewKHbbFCOUQFggoMAA&url=https%3A%2F%2Fwww.adobe.com%2Fcontent%2Fdam%2Facom%2Fen%2Fdevnet%2Fflv%2Fvideo_file_format_spec_v10.pdf&usg=AOvVaw0wwfZyn48I7P4PNPwn736E)
+* [flvmeta tool](https://github.com/noirotm/flvmeta)
 
 ## License 
 
