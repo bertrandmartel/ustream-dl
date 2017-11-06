@@ -175,7 +175,7 @@ cookie_string = "; ".join([str(x)+"="+str(y) for x,y in cookies.items()])
 websocket_url = "wss://r" + str(randN(8)) + "-1-" + video_id + "-recorded-wss-live.ums.ustream.tv/1/ustream"
 count, urls, next_host = get_stream_urls(websocket_url, cookie_string, dirpath, url)
 
-if (next_host is not None):
+if next_host:
 	print("connecting to " + next_host)
 	count, urls, next_host = get_stream_urls("wss://" + next_host + "/1/ustream", cookie_string, dirpath, url)
 
